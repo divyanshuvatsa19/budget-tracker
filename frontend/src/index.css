@@ -1,0 +1,13 @@
+/* Simple reset to avoid conflicts with our custom App.css design */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #090a0f;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
