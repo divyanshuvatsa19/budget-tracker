@@ -53,6 +53,65 @@ export default function App() {
 
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
 
+  // Primary & Locked cards state
+  const [primaryCardId, setPrimaryCardId] = useState(() => {
+    return localStorage.getItem(`mb_primary_card_${activeUser?.id || 'guest'}`) || '';
+  });
+
+  const [lockedCardIds, setLockedCardIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`mb_locked_cards_${activeUser?.id || 'guest'}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // Persist Primary & Locked cards
+  useEffect(() => {
+    localStorage.setItem(`mb_primary_card_${activeUser?.id || 'guest'}`, primaryCardId);
+  }, [primaryCardId, activeUser?.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`mb_locked_cards_${activeUser?.id || 'guest'}`, JSON.stringify(lockedCardIds));
+  }, [lockedCardIds, activeUser?.id]);
+
+  // Card Action Handlers
+  const togglePrimaryCard = (cardId) => {
+    setPrimaryCardId(prev => prev === cardId ? '' : cardId);
+  };
+
+  const toggleLockCard = (cardId) => {
+    setLockedCardIds(prev => 
+      prev.includes(cardId) ? prev.filter(id => id !== cardId) : [...prev, cardId]
+    );
+  };
+
+  const handleRenameCard = (cardId, currentName) => {
+    const newName = prompt("Enter new name for the card:", currentName);
+    if (newName && newName.trim() !== '') {
+      setCards(prev => prev.map(c => c.id === cardId ? { ...c, name: newName.trim() } : c));
+    }
+  };
+
+  const getCardSpend = (cardId) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    const currentExpenses = transactions.filter(t => {
+      if (t.type !== 'expense') return false;
+      const tDate = new Date(t.date);
+      return tDate.getFullYear() === currentYear && tDate.getMonth() === currentMonth;
+    });
+    
+    const totalExpenses = currentExpenses.reduce((sum, t) => sum + t.amount, 0);
+    
+    if (cards.length === 0) return 0;
+    const cardIndex = cards.findIndex(c => c.id === cardId);
+    if (cardIndex === 0) return Math.round(totalExpenses * 0.45);
+    if (cardIndex === 1) return Math.round(totalExpenses * 0.30);
+    return Math.round(totalExpenses * (0.15 / Math.max(1, cards.length - 2)));
+  };
+
   // Persist cards when they change
   useEffect(() => {
     localStorage.setItem(cardsKey, JSON.stringify(cards));
@@ -274,6 +333,7 @@ export default function App() {
             {activeTab === 'budgets' && (
               <BudgetSettings 
                 budgets={budgets} 
+                transactions={transactions}
                 onUpdateBudget={handleUpdateBudget} 
               />
             )}
@@ -291,62 +351,157 @@ export default function App() {
         <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>My Cards</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {cards.map((card, index) => {
-            const cardStyle = index > 0 ? { marginTop: '-80px', zIndex: index + 1 } : {};
+            const isLocked = lockedCardIds.includes(card.id);
+            const isPrimary = primaryCardId === card.id;
+            const cardStyle = {
+              ...(index > 0 ? { marginTop: '-70px' } : {}),
+              zIndex: index + 1,
+              position: 'relative'
+            };
+            const spent = getCardSpend(card.id);
+            const limit = index === 0 ? 75000 : index === 1 ? 50000 : 30000;
+            
             return (
               <div 
                 key={card.id} 
-                className={`budget-card card-theme-${card.theme}`} 
+                className="card-container-wrapper" 
                 style={cardStyle}
               >
-                <button 
-                  type="button"
-                  className="delete-card-btn" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (window.confirm(`Are you sure you want to remove ${card.name}?`)) {
-                      setCards(cards.filter(c => c.id !== card.id));
-                    }
-                  }}
-                  title="Remove Card"
-                >
-                  ×
-                </button>
-
-                {/* Top row: name + network */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    {/* Credit / Debit badge */}
-                    {card.cardType && (
-                      <span style={{
-                        fontSize: '10px', fontWeight: '700', letterSpacing: '0.8px',
-                        textTransform: 'uppercase',
-                        background: card.cardType === 'Debit' ? 'rgba(59,130,246,0.25)' : 'rgba(16,185,129,0.25)',
-                        border: card.cardType === 'Debit' ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(16,185,129,0.5)',
-                        color: card.cardType === 'Debit' ? '#93c5fd' : '#6ee7b7',
-                        padding: '2px 7px', borderRadius: '20px',
-                        display: 'inline-block', marginBottom: '4px'
-                      }}>{card.cardType}</span>
-                    )}
-                    <div style={{ fontWeight: '600', fontSize: '14px' }}>{card.name}</div>
+                {/* Lock Overlay */}
+                {isLocked && (
+                  <div className="lock-overlay">
+                    <span className="lock-overlay-icon">🔒</span>
+                    <span>Card Locked</span>
                   </div>
-                  <span style={{
-                    fontWeight: 'bold',
-                    fontStyle: card.type === 'MasterCard' ? 'italic' : 'normal',
-                    color: card.type === 'MasterCard' ? '#ffeb3b' : 'white',
-                    fontSize: '13px'
-                  }}>
-                    {card.type}
-                  </span>
+                )}
+
+                <div 
+                  className={`budget-card card-theme-${card.theme} ${isLocked ? 'locked-card' : ''} ${isPrimary ? 'primary-card-glowing' : ''}`}
+                  style={{ minHeight: '190px' }}
+                >
+                  <button 
+                    type="button"
+                    className="delete-card-btn" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Are you sure you want to remove ${card.name}?`)) {
+                        setCards(cards.filter(c => c.id !== card.id));
+                        if (primaryCardId === card.id) setPrimaryCardId('');
+                        setLockedCardIds(lockedCardIds.filter(id => id !== card.id));
+                      }
+                    }}
+                    title="Remove Card"
+                  >
+                    ×
+                  </button>
+
+                  {/* Top row: name + network */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      {/* Credit / Debit badge */}
+                      {card.cardType && (
+                        <span style={{
+                          fontSize: '9px', fontWeight: '700', letterSpacing: '0.8px',
+                          textTransform: 'uppercase',
+                          background: card.cardType === 'Debit' ? 'rgba(59,130,246,0.25)' : 'rgba(16,185,129,0.25)',
+                          border: card.cardType === 'Debit' ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(16,185,129,0.5)',
+                          color: card.cardType === 'Debit' ? '#93c5fd' : '#6ee7b7',
+                          padding: '2px 7px', borderRadius: '20px',
+                          display: 'inline-block', marginBottom: '4px', marginRight: '6px'
+                        }}>{card.cardType}</span>
+                      )}
+                      {isPrimary && (
+                        <span style={{
+                          fontSize: '9px', fontWeight: '700', letterSpacing: '0.8px',
+                          textTransform: 'uppercase',
+                          background: 'rgba(255, 215, 0, 0.25)',
+                          border: '1px solid rgba(255, 215, 0, 0.5)',
+                          color: '#ffd700',
+                          padding: '2px 7px', borderRadius: '20px',
+                          display: 'inline-block', marginBottom: '4px'
+                        }}>★ Primary</span>
+                      )}
+                      <div style={{ fontWeight: '600', fontSize: '14px', marginTop: '2px' }}>{card.name}</div>
+                    </div>
+                    <span style={{
+                      fontWeight: 'bold',
+                      fontStyle: card.type === 'MasterCard' ? 'italic' : 'normal',
+                      color: card.type === 'MasterCard' ? '#ffeb3b' : 'white',
+                      fontSize: '13px'
+                    }}>
+                      {card.type}
+                    </span>
+                  </div>
+
+                  {/* Card number */}
+                  <div style={{ marginTop: '12px', fontSize: '16px', letterSpacing: '2px', fontFamily: 'monospace' }}>{card.number}</div>
+
+                  {/* Card Usage Snapshot */}
+                  <div style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', opacity: 0.8, marginBottom: '4px' }}>
+                      <span>Spent: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(spent)}</span>
+                      <span>Limit: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(limit)}</span>
+                    </div>
+                    <div style={{ height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${Math.min(100, (spent / limit) * 100)}%`,
+                        background: (spent / limit) > 0.85 ? 'var(--rose)' : 'rgba(255,255,255,0.85)',
+                        borderRadius: '2px',
+                        transition: 'width 0.5s ease'
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Bottom: holder + expiry */}
+                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                    <span style={{ opacity: 0.8 }}>Card Holder<br/><strong>{card.holder}</strong></span>
+                    <span style={{ opacity: 0.8, textAlign: 'right' }}>Expires<br/><strong>{card.expiry}</strong></span>
+                  </div>
                 </div>
 
-                {/* Card number */}
-                <div style={{ marginTop: '16px', fontSize: '17px', letterSpacing: '2px', fontFamily: 'monospace' }}>{card.number}</div>
-
-                {/* Bottom: holder + expiry */}
-                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <span style={{ opacity: 0.8 }}>Card Holder<br/><strong>{card.holder}</strong></span>
-                  <span style={{ opacity: 0.8, textAlign: 'right' }}>Expires<br/><strong>{card.expiry}</strong></span>
-                </div>
+                {/* Quick Actions Row */}
+                {!isLocked && (
+                  <div className="card-quick-actions">
+                    <button 
+                      type="button" 
+                      className={`card-action-btn ${isPrimary ? 'star-active' : ''}`}
+                      onClick={() => togglePrimaryCard(card.id)}
+                      title="Set Card as Primary"
+                    >
+                      ⭐ {isPrimary ? 'Unstar' : 'Primary'}
+                    </button>
+                    <button 
+                      type="button" 
+                      className="card-action-btn"
+                      onClick={() => toggleLockCard(card.id)}
+                      title="Lock Card"
+                    >
+                      🔒 Lock
+                    </button>
+                    <button 
+                      type="button" 
+                      className="card-action-btn"
+                      onClick={() => handleRenameCard(card.id, card.name)}
+                      title="Rename Card"
+                    >
+                      ✏️ Rename
+                    </button>
+                  </div>
+                )}
+                {isLocked && (
+                  <div className="card-quick-actions" style={{ opacity: 1, transform: 'translateY(0)' }}>
+                    <button 
+                      type="button" 
+                      className="card-action-btn"
+                      onClick={() => toggleLockCard(card.id)}
+                      style={{ color: 'var(--emerald)', width: '100%', justifyContent: 'center' }}
+                      title="Unlock Card"
+                    >
+                      🔓 Unlock Card
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
