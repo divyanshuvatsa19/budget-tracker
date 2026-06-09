@@ -1,6 +1,9 @@
-const API_BASE = import.meta.env.DEV 
-  ? 'http://localhost:5000/api' 
-  : '/api';
+// Prefer Vite environment variable `VITE_API_URL` when provided (e.g. production URL).
+// Falls back to localhost in dev, or relative `/api` in production if not set.
+const envApi = import.meta.env.VITE_API_URL;
+const API_BASE = envApi
+  ? `${envApi.replace(/\/$/, '')}/api`
+  : (import.meta.env.DEV ? 'http://localhost:5000/api' : 'https://budget-tracker-gq7b.onrender.com/api');
 
 export async function fetchSummary() {
   const res = await fetch(`${API_BASE}/summary`);
