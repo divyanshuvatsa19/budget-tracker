@@ -163,7 +163,7 @@ export default function App() {
       <aside className="left-sidebar">
         <div className="brand-logo" style={{ marginBottom: '20px' }}>
           <span className="logo-icon">🏦</span>
-          <h2>MyBudget</h2>
+          <h2>MyBudget <span style={{ fontSize: '18px', color: 'var(--indigo)' }}>✨</span></h2>
         </div>
         
         <nav className="nav-tabs" style={{ flexDirection: 'column', background: 'transparent', border: 'none', gap: '12px', padding: 0 }}>
@@ -218,6 +218,15 @@ export default function App() {
             />
           </div>
           <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="premium-badge" style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 14px', borderRadius: '20px',
+              background: 'rgba(255, 91, 53, 0.1)', border: '1px solid rgba(255, 91, 53, 0.25)',
+              color: '#FF8F73', fontSize: '12px', fontWeight: 'bold',
+              boxShadow: '0 4px 12px rgba(255, 91, 53, 0.08)'
+            }}>
+              <span>✨</span> Premium
+            </div>
             <button 
               className="add-tx-btn btn-primary"
               onClick={() => setIsFormOpen(true)}

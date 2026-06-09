@@ -98,11 +98,11 @@ export default function Dashboard({ summary, transactions = [] }) {
   const peakPoint = pts.reduce((max, p) => p.y < max.y ? p : max, pts[0] || {x:0, y:0, balance: 0});
 
   return (
-    <div className="dashboard-grid animate-fade-in" style={{ gap: '32px' }}>
+    <div className="dashboard-grid animate-fade-in">
       
       {/* Account Details Spline Chart Panel */}
-      <div className="glass-card chart-panel" style={{ padding: '32px', position: 'relative', overflow: 'hidden' }}>
-        <h3 style={{ marginBottom: '8px', fontSize: '20px' }}>Account Details</h3>
+      <div className="glass-card chart-panel" style={{ position: 'relative', overflow: 'hidden' }}>
+        <h3 style={{ marginBottom: '8px' }}>Account Details</h3>
         <div style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>Net Balance over time</div>
         
         <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '16px' }}>
@@ -129,11 +129,11 @@ export default function Dashboard({ summary, transactions = [] }) {
           </svg>
         </div>
       </div>
-
+ 
       <div className="dashboard-main-layout">
         {/* Expenses Summary Doughnut */}
-        <div className="glass-card chart-panel" style={{ padding: '32px' }}>
-          <h3 style={{ fontSize: '20px', marginBottom: '24px' }}>Expenses Summary</h3>
+        <div className="glass-card chart-panel">
+          <h3 style={{ marginBottom: '24px' }}>Expenses Summary</h3>
           {totalSpent === 0 ? (
             <div className="empty-chart">
               <div className="empty-chart-icon">📊</div>
@@ -196,8 +196,8 @@ export default function Dashboard({ summary, transactions = [] }) {
         </div>
 
         {/* Budget Progress & Metrics */}
-        <div className="glass-card budget-panel" style={{ padding: '32px' }}>
-          <h3 style={{ fontSize: '20px', marginBottom: '24px' }}>Budget Progress</h3>
+        <div className="glass-card budget-panel">
+          <h3 style={{ marginBottom: '24px' }}>Budget Progress</h3>
           
           <div className="budgets-progress-list" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {activeCategories.map(cat => {
